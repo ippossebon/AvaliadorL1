@@ -18,7 +18,6 @@
 		| let rec f = fn x => e1 in e2
   
 *)
-
 	type variable = string;;
 	type operator =
 	    Sum 
