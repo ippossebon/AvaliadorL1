@@ -1,47 +1,74 @@
-type term =
-    TTrue
-    | TFalse
-    | TIf of term * term * term
-    | TZero 
-    | TSucc of term
-    | TPred of term
-    | TIsZero of term
+type identifier = string
 
+type operator =
+      Sum
+    | Diff
+    | Mult
+	| Div
+	| Mod
+	| Equal
+	| NotEqual
+	| Less
+	| Greater
+	| LessOrEqual
+	| GreaterOrEqual
+
+type expression =
+      Num of int
+    | Bool of bool
+    | BinOp of expression * operator * expression (* 2 + 3*)
+    | If of expression * expression * expression (* if e1 then e2 else e3 *)
+    | Var of identifier
+    | Applic of expression * expression (* eval e1*)
+    | Function of identifier * expression (* (fn x : T -> x + 1) e1  >>> Confirmar *)
+    | Let of identifier * expression * expression (* let e1 = 5 *)
+    | LetRec of identifier * expression * expression
+
+
+type value =
+      VNum of int
+    | VBool of bool
 (* Excecao a ser ativada quando o termo for uma forma normal.
     Isso significa que:
     - term pode ser um VALOR, ou
     - term pode ser um ERRO de execucao *)
-exception NoRuloApplies
+exception NoRuleApplies
 
 (* Funcao auxiliar: determinar se um termo eh um VALOR NUMERICO*)
-let rec is_numerical_value t = match t with
-      TZero -> true
-    | TSucc(t1) -> is_numerical_value t1
-    | _ -> false
+//let rec is_numerical_value t =
+//    match t with
+//      TZero -> true
+//      | TSucc(t1) -> is_numerical_value t1
+//      | _ -> false
 
 (* Funcao STEP: -> avaliacao em um passo *)
-let rec step t = match t with
-    (* Caso IF(t1, t2, t3)*)
-      TIf(TTrue, t2, t3) -> t2 (* IF TRUE *)
-    | TIf(TFalse, t2, t3) -> t3 (* IF FALSE *)
-    | TIf(t1, t2, t3) -> let t1' = step t1 in TIf(t1' , t2, t3)
+let rec step e =
+    match e with (* e = 2 + 3*)
+        (* Caso VALOR *)
+          Num(e) -> VNum(e) (* Num(2) -> VNum(2)*)
+        | Bool(e) -> VBool(e) (* Bool(true) -> VBool(true) *)
 
-    | TSucc(t1) -> let t1' = step t1 in TSucc(t1')
+        (* Caso IF(t1, t2, t3)*)
+          If(true, e2, e3) -> e2 (* IF TRUE *)
+        | If(false, e2, e3) -> e3 (* IF FALSE *)
+        | If(e1, e2, e3) -> let e1' = step e1 in If(e1', e2, e3)
 
-    | TPred(TZero) -> TZero
-    | TPred(TSucc (nv1)) when (is_numerical_value nv1) -> nv1
-    | TPred(t1) -> let t1' = step t1 in TPred(t1')
+        (* Caso BINARY OPERATOR*)
+        (* nv op nv -> nv
+            e1 op e2 -> e1' op e2
+            nv op e2 -> nv op e2' *)
+        BinOp (VNum(e1), Sum, VNum(e2)) -> VNum(e1) + VNum(e2) (* Num(e1 + e2)*)
+        BinOp (e1, Sum, e2) -> let e1' = step(BinOp(e1', Sum, e2))
+        BinOp (VNum(e1), Sum, e2) -> let e2' = step(BinOp(VNum(e1), Sum, e2'))
 
-    | TIsZero(TZero) -> TTrue
-    | TIsZero(TSucc (nv1)) when (is_numerical_value nv1) -> TFalse
-    | TIsZero(t1) -> let t1' = step t1 in TIsZero(t1')
-    | _ -> raise NoRuloApplies
+        
+        | _ -> raise NoRuleApplies
 
 
 (* Implementacao de EVAL *)
-let rec eval t =
+let rec eval t = (* t = 2 + 3*)
     printfn "estou no eval"
-    try let t' = step t
+    try let t' = step t (* step(2+3) = *)
         in eval t'
     with NoRuleApplies -> t
 
@@ -54,9 +81,8 @@ let rec eval t =
         let t4 = TIsZero(TSucc(TZero))
         let t5 = TIsZero(TFalse)
 
-        let resp = eval t4
-
-
+        let resp = (eval t4) in
+            printfn "%s" resp
 
 
         0
