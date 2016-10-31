@@ -86,7 +86,7 @@ let rec is_ready (e:expression) : bool = (* bool de F# *)
 
 (* Small Step *)
 let rec step (e:expression) : expression =
-    match e with
+  match e with
         (* Caso IF(t1, t2, t3)*)
         If(Bool true, e2, e3) -> e2 (* IF TRUE *)
         | If(Bool false, e2, e3) -> e3 (* IF FALSE *)
@@ -96,13 +96,10 @@ let rec step (e:expression) : expression =
         (* nv op nv -> nv
             e1 op e2 -> e1' op e2
             nv op e2 -> nv op e2'
-            VICK: binOp sempre recebe expression, não tem como passar valor. Parece que não
-            mexemos com valor no step.
+
             *)
             (* e1 e e2 estão prontos. *)
         | BinOp (Num e1, Sum, Num e2) -> Num(e1+e2) (* Num(e1 + e2)*)
-        (* Antes estava:  BinOp (e1, Sum, e2) -> let e1' = step(BinOp(e1', Sum, e2))
-            e dando erro, acho que agora está certo ne? -- Acho que sim! *)
         (* e2 não está pronto e precisa ser avaliado. *)
         | BinOp (Num e1, Sum, e2) -> let e2' = step e2 in (BinOp(Num e1, Sum, e2'))
         (* e1 não está pronto e precisa ser avaliado. *)
@@ -145,7 +142,7 @@ let rec step (e:expression) : expression =
         | BinOp (Num e1, GreaterOrEqual, e2) -> let e2' = step e2 in (BinOp(Num e1, GreaterOrEqual, e2'))
         | BinOp (e1, GreaterOrEqual, e2) -> let e1' = step e1 in (BinOp(e1', GreaterOrEqual, e2))
 
-        //| _ -> raise NoRuleApplies
+        | _ -> raise NoRuleApplies
 
 let rec eval e =
     printfn "estou no eval"
@@ -155,7 +152,8 @@ let rec eval e =
 
 
 (* Testes BinOp *)
-let doisMaisCinco = BinOp(Num 2, Sum, Num 5);;
-let cincoMenosQuatro = BinOp(Num 5, Diff, Num 4);;
-let doisVezesTres = BinOp(Num 2, Mult, Num 3);;
-let seisDivDois = BinOp(Num 6, Div, Num 2);;
+let verdade = eval(if true then 2 else 3);;
+let doisMaisCinco = eval(BinOp(Num 2, Sum, Num 5));;
+let cincoMenosQuatro = eval(BinOp(Num 5, Diff, Num 4));;
+let doisVezesTres = eval(BinOp(Num 2, Mult, Num 3));;
+let seisDivDois = eval(BinOp(Num 6, Div, Num 2));;
