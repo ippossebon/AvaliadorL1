@@ -1,11 +1,13 @@
-type identifier = string
+(* Isadora Possebon - 00228551
+    Victória Portella - 00225886 *)
+
+type identifier = string    (* Tipo string de F# *)
 
 type operator =
       Sum
       | Diff
       | Mult
       | Div
-      | Mod
       | Equal
       | NotEqual
       | Less
@@ -14,32 +16,39 @@ type operator =
       | GreaterOrEqual
 
 type expression =
-      Num of int
-    | Bool of bool
-    | BinOp of expression * operator * expression (* 2 + 3*)
+      Num of int                (* int F# *)
+    | Bool of bool              (* bool F# *)
+    | Var of identifier         (* identifier : string *)
+    | BinOp of expression * operator * expression (* 2 + 3 -- nao tenho certeza. pode ser op * exp * exp*)
     | If of expression * expression * expression (* if e1 then e2 else e3 *)
-    | Var of identifier
     | Applic of expression * expression (* eval e1*)
-    | Function of identifier * expression (* (fn x : T -> x + 1) e1  >>> Confirmar *)
-    | Let of identifier * expression * expression (* let e1 = 5 *)
-    | LetRec of identifier * expression * expression
+    | Function of identifier * Type * expression (* (fn identifier : T -> x + 1) e1  >>> Confirmar *)
+    | Let of expression * expression * expression (* let e1 = 5 *)
+    | LetRec of identifier * Type * Type * expression * expression(* letrec identifier:Type1 → Type2 = (fn y:Type1 ⇒ e1) in e2*)
 
 
-type value =
-      VNum of int
-    | VBool of bool
+let rec is_ready (e:expression) : bool = (* bool de F# *)
+    match e with
+    | Bool true -> true
+    | Bool false -> true
+    | Num e -> true
+    (*Func e -> ...*)
+    | e -> false
+
+
+
+step -> is_value || step(e)
+
 (* Excecao a ser ativada quando o termo for uma forma normal.
     Isso significa que:
     - term pode ser um VALOR, ou
     - term pode ser um ERRO de execucao *)
-exception NoRuleApplies
 
 (* Funcao auxiliar: determinar se um termo eh um VALOR NUMERICO*)
-//let rec is_numerical_value t =
-//    match t with
-//      TZero -> true
-//      | TSucc(t1) -> is_numerical_value t1
-//      | _ -> false
+let rec is_numerical_value(e: expression) : bool =
+    match e with
+        Num(a) -> true;
+        | Bool
 
 (* Funcao STEP: -> avaliacao em um passo
                   VICK: retorna uma expressão: 1) parece que tem q ter esse retorno
