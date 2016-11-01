@@ -152,9 +152,9 @@ let rec eval e =
 
 
 (* Testes BinOp *)
-let verdade = eval(If(Bool true,Num 2, Num 3));;
-let falso = eval(If(Bool true,Num 2, Num 3));;
-let doisMaisCinco = eval(BinOp(Num 2, Sum, Num 5));;
-let cincoMenosQuatro = eval(BinOp(Num 5, Diff, Num 4));;
-let doisVezesTres = eval(BinOp(Num 2, Mult, Num 3));;
+let verdade = eval(If(Bool true,Num 2, Num 3))
+let falso = eval(If(Bool true,Num 2, Num 3))
+let doisMaisCinco = eval(BinOp(Num 2, Sum, Num 5))
+let cincoMenosQuatro = eval(BinOp(Num 5, Diff, Num 4))
+let doisVezesTres = eval(BinOp(Num 2, Mult, Num 3))
 let seisDivDois = eval(BinOp(Num 6, Div, Num 2));;
