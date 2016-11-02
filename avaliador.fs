@@ -36,8 +36,6 @@ type Type =
 
 exception NoRuleAppliesException
 
-type Identifier = string    (* Tipo string de F# *)
-
 type Operator =
       Sum
       | Diff
@@ -53,13 +51,13 @@ type Operator =
 type Expression =
       Num of int                                                    (* Num refere-se a linguagem aqui implementada, int a F# *)
     | Bool of bool                                                  (* Bool refere-se a linguagem aqui implementada, bool a F# *)
-    | Var of Identifier                                             (* Identifier : string *)
+    | Var of string
     | BinOp of Expression * Operator * Expression                   (* 2 + 3 -- nao tenho certeza. pode ser op * exp * exp*)
     | If of Expression * Expression * Expression                    (* if e1 then e2 else e3 *)
     | Applic of Expression * Expression                             (* Aplicação: eval e1 *)
-    | Function of Identifier * Type * Expression                    (* (fn Identifier : T -> x + 1) e1  >>> Confirmar *)
+    | Function of string * Type * Expression                        (* (fn string : T -> x + 1) e1  >>> Confirmar *)
     | Let of Expression * Expression * Expression                   (* let e1 = 5 *)
-    | LetRec of Identifier * Type * Type * Expression * Expression
+    | LetRec of string * Type * Type * Expression * Expression
 
 
 let rec isReady (e:Expression) : bool =   (* bool de F# *)
