@@ -59,11 +59,12 @@ type Expression =
     | Applic of Expression * Expression                             (* Aplicação: eval e1 *)
     | Function of Identifier * Type * Expression                    (* (fn Identifier : T -> x + 1) e1  >>> Confirmar *)
     | Let of Expression * Expression * Expression                   (* let e1 = 5 *)
-    | LetRec of Identifier * Type * Type * Expression * Expression  (* letrec Identifierar que verifica se um dado termo está pronto.
-O termo está pronto quando o termo é um valor. *)
+    | LetRec of Identifier * Type * Type * Expression * Expression
+
+
 let rec isReady (e:Expression) : bool =   (* bool de F# *)
     match e with
-    | Bool true -> true (* Valor Bool *)
+    Bool true -> true (* Valor Bool *)
     | Bool false -> true (* Valor Bool *)
     | Num e -> true (* Valor numérico *)
     (*Func e -> ...*) (* fn é um termo pronto *)
@@ -75,11 +76,14 @@ let rec isReady (e:Expression) : bool =   (* bool de F# *)
     - term pode ser um VALOR, ou
     - term pode ser um ERRO de execucao *)
 
-(* Funcao auxiliar: determinar se um termo eh um VALOR NUMERICO*)
-//let rec is_numerical_value(e: Expression) : bool =
-//    match e with
-//        Num e -> true;
-//        | _ -> false
+(* Substitui ocorrencias de var em body por value. {value/var} body *)
+let rec replace (body:Expression) (var:Expression) (value:Expression) : Expression =
+    match body with
+        If(e1, e2, e3) -> If(replace e1 var value, replace e2 var value, replace e3 var value)
+        | BinOp(e1, Operator, e2) -> BinOp(replace e1 var value, Operator, replace e2 var value)
+        | Applic(e1, e2) -> Applic(replace e1 var value, replace e2 var value);
+
+
 
 
 (* Small Step *)
@@ -139,6 +143,10 @@ let rec step (e:Expression) : Expression =
         | BinOp (Num e1, GreaterOrEqual, Num e2) -> Bool(e1>=e2)
         | BinOp (Num e1, GreaterOrEqual, e2) -> let e2' = step e2 in (BinOp(Num e1, GreaterOrEqual, e2'))
         | BinOp (e1, GreaterOrEqual, e2) -> let e1' = step e1 in (BinOp(e1', GreaterOrEqual, e2))
+
+        | Applic(e1, e2) when not(isReady e1) -> let e1' = step e1 in Applic(e1', e2)
+        | Applic(v, e2) when (isReady v) && not(isReady e2) -> let e2' = step e2 in Applic(v, e2')
+        | Applic(Function(identifier, tp, expression), value) -> replace expression (Identifier identifier) (value)
 
         | _ -> raise NoRuleAppliesException
 
