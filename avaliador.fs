@@ -79,9 +79,9 @@ let rec isReady (e:Expression) : bool =   (* bool de F# *)
 (* Substitui ocorrencias de var em body por value. {value/var} body *)
 let rec replace (body:Expression) (var:Expression) (value:Expression) : Expression =
     match body with
-        If(e1, e2, e3) -> If(replace e1 var value, replace e2 var value, replace e3 var value)
-        | BinOp(e1, Operator, e2) -> BinOp(replace e1 var value, Operator, replace e2 var value)
-        | Applic(e1, e2) -> Applic(replace e1 var value, replace e2 var value);
+    If(e1, e2, e3) -> If(replace e1 var value, replace e2 var value, replace e3 var value)
+    | BinOp(e1, operator, e2) -> BinOp(replace e1 var value, operator, replace e2 var value)
+    | Applic(e1, e2) -> Applic(replace e1 var value, replace e2 var value)
 
 
 
@@ -146,7 +146,7 @@ let rec step (e:Expression) : Expression =
 
         | Applic(e1, e2) when not(isReady e1) -> let e1' = step e1 in Applic(e1', e2)
         | Applic(v, e2) when (isReady v) && not(isReady e2) -> let e2' = step e2 in Applic(v, e2')
-        | Applic(Function(identifier, tp, expression), value) -> replace expression (Identifier identifier) (value)
+        | Applic(Function(identifier, tp, expression), value) -> replace expression (Var identifier) (value)
 
         | _ -> raise NoRuleAppliesException
 
@@ -158,9 +158,9 @@ let rec eval e =
 
 
 (* Testes BinOp *)
-let verdade = eval(If(Bool true, Num 2, Num 3))
+(*let verdade = eval(If(Bool true, Num 2, Num 3))
 let falso = eval(If(Bool true, Num 2, Num 3))
 let doisMaisCinco = eval(BinOp(Num 2, Sum, Num 5))
 let cincoMenosQuatro = eval(BinOp(Num 5, Diff, Num 4))
 let doisVezesTres = eval(BinOp(Num 2, Mult, Num 3))
-let seisDivDois = eval(BinOp(Num 6, Div, Num 2));;
+let seisDivDois = eval(BinOp(Num 6, Div, Num 2))*)
