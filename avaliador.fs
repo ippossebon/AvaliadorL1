@@ -34,11 +34,11 @@ type Type =
     | List
     | Func
 
-exception NoRuleApplies
+exception NoRuleAppliesException
 
-type identifier = string    (* Tipo string de F# *)
+type Identifier = string    (* Tipo string de F# *)
 
-type operator =
+type Operator =
       Sum
       | Diff
       | Mult
@@ -50,20 +50,18 @@ type operator =
       | LessOrEqual
       | GreaterOrEqual
 
-type expression =
-      Num of int                (* Num refere-se a linguagem aqui implementada, int a F# *)
-    | Bool of bool              (* Bool refere-se a linguagem aqui implementada, bool a F# *)
-    | Var of identifier         (* identifier : string *)
-    | BinOp of expression * operator * expression (* 2 + 3 -- nao tenho certeza. pode ser op * exp * exp*)
-    | If of expression * expression * expression (* if e1 then e2 else e3 *)
-    | Applic of expression * expression (* Aplicação: eval e1 *)
-    | Function of identifier * Type * expression (* (fn identifier : T -> x + 1) e1  >>> Confirmar *)
-    | Let of expression * expression * expression (* let e1 = 5 *)
-    | LetRec of identifier * Type * Type * expression * expression(* letrec identifier:Type1 → Type2 = (fn y:Type1 ⇒ e1) in e2*)
-
-(* Função auxiliar que verifica se um dado termo está pronto.
+type Expression =
+      Num of int                                                    (* Num refere-se a linguagem aqui implementada, int a F# *)
+    | Bool of bool                                                  (* Bool refere-se a linguagem aqui implementada, bool a F# *)
+    | Var of Identifier                                             (* Identifier : string *)
+    | BinOp of Expression * Operator * Expression                   (* 2 + 3 -- nao tenho certeza. pode ser op * exp * exp*)
+    | If of Expression * Expression * Expression                    (* if e1 then e2 else e3 *)
+    | Applic of Expression * Expression                             (* Aplicação: eval e1 *)
+    | Function of Identifier * Type * Expression                    (* (fn Identifier : T -> x + 1) e1  >>> Confirmar *)
+    | Let of Expression * Expression * Expression                   (* let e1 = 5 *)
+    | LetRec of Identifier * Type * Type * Expression * Expression  (* letrec Identifierar que verifica se um dado termo está pronto.
 O termo está pronto quando o termo é um valor. *)
-let rec is_ready (e:expression) : bool = (* bool de F# *)
+let rec isReady (e:Expression) : bool =   (* bool de F# *)
     match e with
     | Bool true -> true (* Valor Bool *)
     | Bool false -> true (* Valor Bool *)
@@ -78,14 +76,14 @@ let rec is_ready (e:expression) : bool = (* bool de F# *)
     - term pode ser um ERRO de execucao *)
 
 (* Funcao auxiliar: determinar se um termo eh um VALOR NUMERICO*)
-//let rec is_numerical_value(e: expression) : bool =
+//let rec is_numerical_value(e: Expression) : bool =
 //    match e with
 //        Num e -> true;
 //        | _ -> false
 
 
 (* Small Step *)
-let rec step (e:expression) : expression =
+let rec step (e:Expression) : Expression =
   match e with
         (* Caso IF(t1, t2, t3)*)
         If(Bool true, e2, e3) -> e2 (* IF TRUE *)
@@ -98,7 +96,7 @@ let rec step (e:expression) : expression =
             nv op e2 -> nv op e2'
 
             *)
-            (* e1 e e2 estão prontos. *)
+        (* e1 e e2 estão prontos. *)
         | BinOp (Num e1, Sum, Num e2) -> Num(e1+e2) (* Num(e1 + e2)*)
         (* e2 não está pronto e precisa ser avaliado. *)
         | BinOp (Num e1, Sum, e2) -> let e2' = step e2 in (BinOp(Num e1, Sum, e2'))
@@ -142,18 +140,18 @@ let rec step (e:expression) : expression =
         | BinOp (Num e1, GreaterOrEqual, e2) -> let e2' = step e2 in (BinOp(Num e1, GreaterOrEqual, e2'))
         | BinOp (e1, GreaterOrEqual, e2) -> let e1' = step e1 in (BinOp(e1', GreaterOrEqual, e2))
 
-        | _ -> raise NoRuleApplies
+        | _ -> raise NoRuleAppliesException
 
 let rec eval e =
     printfn "estou no eval"
     try let e' = step e
         in eval e'
-    with NoRuleApplies -> e
+    with NoRuleAppliesException -> e
 
 
 (* Testes BinOp *)
-let verdade = eval(If(Bool true,Num 2, Num 3))
-let falso = eval(If(Bool true,Num 2, Num 3))
+let verdade = eval(If(Bool true, Num 2, Num 3))
+let falso = eval(If(Bool true, Num 2, Num 3))
 let doisMaisCinco = eval(BinOp(Num 2, Sum, Num 5))
 let cincoMenosQuatro = eval(BinOp(Num 5, Diff, Num 4))
 let doisVezesTres = eval(BinOp(Num 2, Mult, Num 3))
