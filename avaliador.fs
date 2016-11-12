@@ -51,21 +51,28 @@ type Operator =
 type Expression =
       Num of int                                                    (* Num refere-se a linguagem aqui implementada, int a F# *)
     | Bool of bool                                                  (* Bool refere-se a linguagem aqui implementada, bool a F# *)
-    | Var of string
+    | Var of string (* Identificador *)
     | BinOp of Expression * Operator * Expression                   (* 2 + 3 -- nao tenho certeza. pode ser op * exp * exp*)
     | If of Expression * Expression * Expression                    (* if e1 then e2 else e3 *)
     | Applic of Expression * Expression                             (* Aplicação: eval e1 *)
     | Function of string * Type * Expression                        (* (fn string : T -> x + 1) e1  >>> Confirmar *)
     | Let of Expression * Expression * Expression                   (* let e1 = 5 *)
     | LetRec of string * Type * Type * Expression * Expression
-
+    | Nil (* Lista vazia *)
+    | Conc of Expression * Expression (* Concatenação de listas *)
+    | IsEmpty of Expression
+    | Hd of Expression (* Primeiro elemento da lista *)
+    | Tl of Expression (* Lista - primeiro elemento *)
+    | Raise
+    | TryWith of Expression * Expression
 
 let rec isReady (e:Expression) : bool =   (* bool de F# *)
     match e with
     Bool true -> true (* Valor Bool *)
     | Bool false -> true (* Valor Bool *)
     | Num e -> true (* Valor numérico *)
-    (*Func e -> ...*) (* fn é um termo pronto *)
+    | Function(identifier, T1, e2) -> true (* fn x:T ⇒ e *)
+    | Nil -> true (* a confirmar *)
     | e -> false (* Não está pronto *)
 
 
@@ -80,8 +87,10 @@ let rec replace (body:Expression) (var:Expression) (value:Expression) : Expressi
     If(e1, e2, e3) -> If(replace e1 var value, replace e2 var value, replace e3 var value)
     | BinOp(e1, operator, e2) -> BinOp(replace e1 var value, operator, replace e2 var value)
     | Applic(e1, e2) -> Applic(replace e1 var value, replace e2 var value)
-
-
+    | Let(id, e1, e2) when (id = var) -> Let(id, replace e1 var value, e2)
+    | Let(id, e1, e2) -> Let(id, replace e1 var value, replace e2 var value)
+    | LetRec(name, T1, T2, func, e) -> LetRec(name, T1, T2, func, (replace e var value))
+    | _ -> if body = var then value else body (* Let x: T => x  *)
 
 
 (* Small Step *)
@@ -92,19 +101,12 @@ let rec step (e:Expression) : Expression =
         | If(Bool false, e2, e3) -> e3 (* IF FALSE *)
         | If(e1, e2, e3) -> let e1' = step e1 in If(e1', e2, e3)
 
-        (* Caso BINARY OPERATOR (BinOp)*)
-        (* nv op nv -> nv
-            e1 op e2 -> e1' op e2
-            nv op e2 -> nv op e2'
-
-            *)
         (* e1 e e2 estão prontos. *)
         | BinOp (Num e1, Sum, Num e2) -> Num(e1+e2) (* Num(e1 + e2)*)
         (* e2 não está pronto e precisa ser avaliado. *)
         | BinOp (Num e1, Sum, e2) -> let e2' = step e2 in (BinOp(Num e1, Sum, e2'))
         (* e1 não está pronto e precisa ser avaliado. *)
         | BinOp (e1, Sum, e2) -> let e1' = step e1 in (BinOp(e1', Sum, e2))
-
 
         | BinOp (Num e1, Diff, Num e2) -> Num(e1-e2)
         | BinOp (Num e1, Diff, e2) -> let e2' = step e2 in (BinOp(Num e1, Diff, e2'))
@@ -142,14 +144,21 @@ let rec step (e:Expression) : Expression =
         | BinOp (Num e1, GreaterOrEqual, e2) -> let e2' = step e2 in (BinOp(Num e1, GreaterOrEqual, e2'))
         | BinOp (e1, GreaterOrEqual, e2) -> let e1' = step e1 in (BinOp(e1', GreaterOrEqual, e2))
 
-        | Applic(e1, e2) when not(isReady e1) -> let e1' = step e1 in Applic(e1', e2)
         | Applic(v, e2) when (isReady v) && not(isReady e2) -> let e2' = step e2 in Applic(v, e2')
+        | Applic(e1, e2) when not(isReady e1) -> let e1' = step e1 in Applic(e1', e2)
         | Applic(Function(identifier, tp, expression), value) -> replace expression (Var identifier) (value)
 
-        | _ -> raise NoRuleAppliesException
+        (* let x = 2 in escopo *)
+        | Let(Var identifier, Num e1, e2) -> replace e2 (Var identifier) (Num e1)
+        | Let(Var identifier, Bool e1, e2) -> replace e2 (Var identifier) (Bool e1)
+        | Let(Var identifier, e1, e2) -> let e1' = step e1 in Let(Var identifier, e1', e2)
+
+        | IsEmpty(Nil) -> true (* verificar *)
+        | IsEmpty(e1) -> false (* verificar*)
+
+        | _ -> raise NoRuleAppliesException (* termos prontos (incluindo Nil) retornam NoRuleAppliesException *)
 
 let rec eval e =
-    printfn "estou no eval"
     try let e' = step e
         in eval e'
     with NoRuleAppliesException -> e
@@ -162,3 +171,4 @@ let doisMaisCinco = eval(BinOp(Num 2, Sum, Num 5))
 let cincoMenosQuatro = eval(BinOp(Num 5, Diff, Num 4))
 let doisVezesTres = eval(BinOp(Num 2, Mult, Num 3))
 let seisDivDois = eval(BinOp(Num 6, Div, Num 2))*)
+let x = Applic(Function("x", Int, BinOp(Var "x", Sum, BinOp(Var "x", Mult, Num 2))), Num 6);
