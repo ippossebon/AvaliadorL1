@@ -79,7 +79,7 @@ let rec step (e:Expression) : Expression =
         TryWith(Raise, e2) -> e2
         | TryWith(v, e2) when (isValue v) -> v
         | TryWith(e1, e2) -> let e1' = step e1 in TryWith(e1', e2)
-        
+
         (* Caso IF(t1, t2, t3)*)
         | If(Raise, _, _) -> Raise
         | If(Bool true, e2, e3) -> e2                               (* IF TRUE *)
@@ -119,8 +119,8 @@ let rec step (e:Expression) : Expression =
         | LetRec(variable, t1, t2, e1, e2) -> replaceInLetRec(replace e2 (Var variable) (e1)) (variable) (t1) (t2) (e1)
 
         (* IsEmpty precisa de confirmação. *)
-        | IsEmpty(ListConst(e1, e2)) -> false
-        | IsEmpty(Nil) -> true
+        | IsEmpty(ListConst(e1, e2)) -> Bool false
+        | IsEmpty(Nil) -> Bool true
 
         | ListConst(Raise, _) -> Raise
         | ListConst(v, Raise) when (isValue v) -> Raise
@@ -139,7 +139,7 @@ let rec step (e:Expression) : Expression =
 
         | Tl(Nil) -> Raise
         | Tl(Raise) -> Raise
-        | Tl(v) when v (isValue v) ->
+        | Tl(v) when (isValue v) ->
                 (match v with
                     ListConst(_, last) -> last
                     | _ -> raise NoRuleAppliesException
@@ -169,5 +169,10 @@ let variavel = Let(Var "x", 5, ...)
 
 let testeLet = eval(Let(Var "oito", Num 8, Function("y", Int, BinOp(Var "y", Mult, Num 2))));;
 let testeLerRec = eval(LetRec("foo", Int, Int, Function("x", Int, (If ((BinOp(Var "x", GreaterOrEqual, Num 5)),(Var "x"),(Applic(Var "foo", BinOp(Var "x", Sum, Num 1)))))), Applic(Var "foo", Num 3)));;
+
+let testeListaHead = eval(Hd(ListConst(Num 99, ListConst(Num 1, ListConst(Num 2, ListConst(Num 3, Nil)))))) ;;
+let testeListaTale = eval(Tl(ListConst(Num 0, ListConst(Num 1, ListConst(Num 2, ListConst(Num 3, Num 4)))))) ;;
+
+let testeTry = eval(TryWith(Hd(Nil), TryWith(Tl(Nil), TryWith(Hd(ListConst(Bool true, Nil)), Nil))));;
 
 *)
