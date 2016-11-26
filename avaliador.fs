@@ -1,33 +1,4 @@
 module avaliador
-(* Isadora Possebon - 00228551 Victória Portella - 00225886 *)
-(*
-Gramática:
-        e ∈ Terms
-        e ::= n
-        | b
-        | e1 op e2
-        | if e1 then e2 else e3
-        | x
-        | e1 e2
-        | fn x:T ⇒ e
-        | let x:T = e1 in e2
-        | let rec f:T1 → T2 = (fn y:T1 ⇒ e1) in e2
-        | nil
-        | e1 :: e2
-        | isempty e
-        | hd e
-        | tl e
-        | raise
-        | try e1 with e2
-
-T ::= X | int | bool | T1 → T2
-        onde
-        n ∈ conjunto de numerais inteiros
-        b ∈ {true, false}
-        x ∈ Ident
-        op ∈ {+, −, ∗, div, <, ≤, ==, ! =, ≥, >}
-        X ∈ VarType
-*)
 
 type Type =
     Boolean
@@ -52,35 +23,33 @@ type Operator =
 type Expression =
       Num of int                                                    (* Num refere-se a linguagem aqui implementada, int a F# *)
     | Bool of bool                                                  (* Bool refere-se a linguagem aqui implementada, bool a F# *)
-    | Var of string (* Identificador *)
+    | Var of string                                                 (* Identificador *)
     | BinOp of Expression * Operator * Expression                   (* 2 + 3 -- nao tenho certeza. pode ser op * exp * exp*)
     | If of Expression * Expression * Expression                    (* if e1 then e2 else e3 *)
     | Applic of Expression * Expression                             (* Aplicação: eval e1 *)
-    | Function of string * Type * Expression                        (* (fn string : T -> x + 1) e1  >>> Confirmar *)
+    | Function of string * Type * Expression                        (* (fn string : T -> x + 1) e1  *)
     | Let of Expression * Expression * Expression                   (* let e1 = 5 *)
     | LetRec of string * Type * Type * Expression * Expression
+
     | Nil                                                           (* Lista vazia *)
-    | Cons of Expression * Expression                               (* cons(e1, e2) Construção de listas *)
+    | ListConst of Expression * Expression                          (* cons(e1, e2) Construção de listas *)
     | IsEmpty of Expression
     | Hd of Expression                                              (* Primeiro elemento da lista: hd(1 2 4) -> 1 *)
     | Tl of Expression                                              (* Lista - primeiro elemento tl(1 2 4) - > (2 4)*)
+
     | Raise
     | TryWith of Expression * Expression
 
 let rec isValue (e:Expression) : bool =   (* bool de F# *) (* isValue *)
     match e with
-    Bool _ -> true (* Valor Bool *)
-    | Num _ -> true (* Valor numérico *)
-    | Function(_) -> true (* fn x:T ⇒ e *)
-    | Nil -> true (* a confirmar *)
-    (*| Cons(e1, e2) -> Cons(, isValue e2) *)(* isValue e1 e isValue e2*)
-    | e -> false (* Não está pronto *)
+    Bool _ -> true                          (* Valor Bool *)
+    | Num _ -> true                         (* Valor numérico *)
+    | Function(_) -> true                   (* fn x:T ⇒ e *)
+    | Nil -> true
+    | ListConst(e1, e2) -> isValue e1 && isValue e2
+    | e -> false                            (* Não está pronto *)
 
 
-(* Excecao a ser ativada quando o termo for uma forma normal.
-    Isso significa que:
-    - term pode ser um VALOR, ou
-    - term pode ser um ERRO de execucao *)
 
 (* Substitui ocorrencias de var em body por value. {value/var} body *)
 let rec replace (body:Expression) (var:Expression) (value:Expression) : Expression =
@@ -107,11 +76,18 @@ let rec replaceInLetRec (body:Expression) (var:string) (t1:Type) (t2:Type) (func
 (* Small Step *)
 let rec step (e:Expression) : Expression =
   match e with
+        TryWith(Raise, e2) -> e2
+        | TryWith(v, e2) when (isValue v) -> v
+        | TryWith(e1, e2) -> let e1' = step e1 in TryWith(e1', e2)
+        
         (* Caso IF(t1, t2, t3)*)
-        If(Bool true, e2, e3) -> e2 (* IF TRUE *)
-        | If(Bool false, e2, e3) -> e3 (* IF FALSE *)
+        | If(Raise, _, _) -> Raise
+        | If(Bool true, e2, e3) -> e2                               (* IF TRUE *)
+        | If(Bool false, e2, e3) -> e3                              (* IF FALSE *)
         | If(e1, e2, e3) -> let e1' = step e1 in If(e1', e2, e3)
 
+        | BinOp(Raise, _, _) -> Raise
+        | BinOp(v, Operator, Raise) when (isValue v) -> Raise
         | BinOp(Num n1, Operator, Num n2) ->
             (match Operator with
                 Sum -> Num(n1+n2)
@@ -127,16 +103,48 @@ let rec step (e:Expression) : Expression =
         | BinOp (Num e1, Operator, e2) -> let e2' = step e2 in (BinOp(Num e1, Operator, e2'))
         | BinOp (e1, Operator, e2) -> let e1' = step e1 in (BinOp(e1', Operator, e2))
 
+        | Applic(Raise, _) -> Raise
+        | Applic(v, Raise) when (isValue v) -> Raise
         | Applic(Function(identifier, tp, expression), value) -> replace expression (Var identifier) (value)
         | Applic(v, e2) when (isValue v) && not(isValue e2) -> let e2' = step e2 in Applic(v, e2')
         | Applic(e1, e2) when not(isValue e1) -> let e1' = step e1 in Applic(e1', e2)
 
         (* let x = 2 in escopo --> Ainda nao funciona *)
+        | Let(Var identifier, Raise, _) -> Raise
         | Let(Var identifier, Num n, e2) -> replace e2 (Var identifier) (Num n)
         | Let(Var identifier, Bool e1, e2) -> replace e2 (Var identifier) (Bool e1)
         | Let(Var identifier, e1, e2) -> let e1' = step e1 in Let(Var identifier, e1', e2)
 
-        | LetRec(nm, t1, t2, f, e) -> replaceInLetRec(replace e (Var nm) (f)) (nm) (t1) (t2) (f)
+        | LetRec(variable, t1, t2, Raise, _) -> Raise
+        | LetRec(variable, t1, t2, e1, e2) -> replaceInLetRec(replace e2 (Var variable) (e1)) (variable) (t1) (t2) (e1)
+
+        (* IsEmpty precisa de confirmação. *)
+        | IsEmpty(ListConst(e1, e2)) -> false
+        | IsEmpty(Nil) -> true
+
+        | ListConst(Raise, _) -> Raise
+        | ListConst(v, Raise) when (isValue v) -> Raise
+        | ListConst(v, e2) when (isValue v)-> let e2' = step e2 in (ListConst(v, e2'))
+        | ListConst(e1, e2) -> let e1' = step e1 in (ListConst(e1', e2))
+
+        | Hd(Nil) -> Raise
+        | Hd(Raise) -> Raise
+        | Hd(v) when (isValue v) ->
+            (match v with
+                ListConst(first, _) -> first
+                | _ -> raise NoRuleAppliesException
+            )
+        | Hd(e1) -> let e1' = step e1 in (Hd(e1'))
+
+
+        | Tl(Nil) -> Raise
+        | Tl(Raise) -> Raise
+        | Tl(v) when v (isValue v) ->
+                (match v with
+                    ListConst(_, last) -> last
+                    | _ -> raise NoRuleAppliesException
+                )
+        | Tl(e1) -> let e1' = step e1 in (Tl(e1'))
 
         | _ -> raise NoRuleAppliesException (* termos prontos (incluindo Nil) retornam NoRuleAppliesException *)
 
@@ -146,7 +154,7 @@ let rec eval e =
     with NoRuleAppliesException -> e
 
 
-(* Testes BinOp *)
+(* Testes*)
 (*let verdade = eval(If(Bool true, Num 2, Num 3))
 let falso = eval(If(Bool true, Num 2, Num 3))
 let doisMaisCinco = eval(BinOp(Num 2, Sum, Num 5))
