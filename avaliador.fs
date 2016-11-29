@@ -40,15 +40,14 @@ type Expression =
     | Raise
     | TryWith of Expression * Expression
 
-let rec isValue (e:Expression) : bool =   (* bool de F# *) (* isValue *)
+let rec isValue (e:Expression) : bool =                             (* bool de F# *) (* isValue *)
     match e with
-    Bool _ -> true                          (* Valor Bool *)
-    | Num _ -> true                         (* Valor numérico *)
-    | Function(_) -> true                   (* fn x:T ⇒ e *)
+    Bool _ -> true                                                  (* Valor Bool *)
+    | Num _ -> true                                                 (* Valor numérico *)
+    | Function(_) -> true                                           (* fn x:T ⇒ e *)
     | Nil -> true
     | ListConst(e1, e2) -> isValue e1 && isValue e2
-    | e -> false                            (* Não está pronto *)
-
+    | e -> false                                                    (* Não está pronto *)
 
 
 (* Substitui ocorrencias de var em body por value. {value/var} body *)
@@ -82,43 +81,44 @@ let rec step (e:Expression) : Expression =
 
         (* Caso IF(t1, t2, t3)*)
         | If(Raise, _, _) -> Raise
-        | If(Bool true, e2, e3) -> e2                               (* IF TRUE *)
-        | If(Bool false, e2, e3) -> e3                              (* IF FALSE *)
+        | If(Bool true, e2, e3) -> e2                                           (* IF TRUE *)
+        | If(Bool false, e2, e3) -> e3                                          (* IF FALSE *)
         | If(e1, e2, e3) -> let e1' = step e1 in If(e1', e2, e3)
 
         | BinOp(Raise, _, _) -> Raise
-        | BinOp(v, Operator, Raise) when (isValue v) -> Raise
-        | BinOp(Num n1, Operator, Num n2) ->
-            (match Operator with
+        | BinOp(v, op, Raise) when (isValue v) -> Raise
+        | BinOp(Num n1, op, Num n2) ->
+            (match op with
                 Sum -> Num(n1+n2)
                 | Diff -> Num(n1-n2)
                 | Mult -> Num(n1*n2)
-                | Div -> Num(n1/n2)
+                | Div ->
+                    (match n2 with
+                    0 -> Raise
+                    | _ -> Num(n1/n2)
+                    )
                 | Equal -> Bool(n1 = n2)
                 | NotEqual -> Bool(n1 <> n2)
                 | Less -> Bool(n1 < n2)
                 | LessOrEqual -> Bool(n1 <= n2)
                 | Greater -> Bool(n1 > n2)
                 | GreaterOrEqual -> Bool(n1 >= n2))
-        | BinOp (Num e1, Operator, e2) -> let e2' = step e2 in (BinOp(Num e1, Operator, e2'))
-        | BinOp (e1, Operator, e2) -> let e1' = step e1 in (BinOp(e1', Operator, e2))
+        | BinOp (Num e1, op, e2) -> let e2' = step e2 in (BinOp(Num e1, op, e2'))
+        | BinOp (e1, op, e2) -> let e1' = step e1 in (BinOp(e1', op, e2))
 
         | Applic(Raise, _) -> Raise
         | Applic(v, Raise) when (isValue v) -> Raise
-        | Applic(Function(identifier, tp, expression), value) -> replace expression (Var identifier) (value)
+        | Applic(Function(identifier, tp, expression), v) when (isValue v) -> replace expression (Var identifier) (v)
         | Applic(v, e2) when (isValue v) && not(isValue e2) -> let e2' = step e2 in Applic(v, e2')
         | Applic(e1, e2) when not(isValue e1) -> let e1' = step e1 in Applic(e1', e2)
 
-        (* let x = 2 in escopo --> Ainda nao funciona *)
         | Let(Var identifier, Raise, _) -> Raise
-        | Let(Var identifier, Num n, e2) -> replace e2 (Var identifier) (Num n)
-        | Let(Var identifier, Bool e1, e2) -> replace e2 (Var identifier) (Bool e1)
+        | Let(Var identifier, v, e2) when (isValue v) -> replace e2 (Var identifier) (v)
         | Let(Var identifier, e1, e2) -> let e1' = step e1 in Let(Var identifier, e1', e2)
 
         | LetRec(variable, t1, t2, Raise, _) -> Raise
         | LetRec(variable, t1, t2, e1, e2) -> replaceInLetRec(replace e2 (Var variable) (e1)) (variable) (t1) (t2) (e1)
 
-        (* IsEmpty precisa de confirmação. *)
         | IsEmpty(ListConst(e1, e2)) -> Bool false
         | IsEmpty(Nil) -> Bool true
 
@@ -148,6 +148,7 @@ let rec step (e:Expression) : Expression =
 
         | _ -> raise NoRuleAppliesException (* termos prontos (incluindo Nil) retornam NoRuleAppliesException *)
 
+
 let rec eval e =
     try let e' = step e
         in eval e'
@@ -155,14 +156,19 @@ let rec eval e =
 
 
 (* Testes*)
-(*let verdade = eval(If(Bool true, Num 2, Num 3))
+(*
+let verdade = eval(If(Bool true, Num 2, Num 3))
 let falso = eval(If(Bool true, Num 2, Num 3))
 let doisMaisCinco = eval(BinOp(Num 2, Sum, Num 5))
 let cincoMenosQuatro = eval(BinOp(Num 5, Diff, Num 4))
 let doisVezesTres = eval(BinOp(Num 2, Mult, Num 3))
-let seisDivDois = eval(BinOp(Num 6, Div, Num 2))*)
-(*let x = eval(Applic(Function("x", Int, BinOp(Var "x", Sum, BinOp(Var "x", Mult, Num 2))), Num 6)) *)(*x + 2x para x=6*)
-(*
+let seisDivDois = eval(BinOp(Num 6, Div, Num 2))
+let x = eval(Applic(Function("x", Int, BinOp(Var "x", Sum, BinOp(Var "x", Mult, Num 2))), Num 6))
+
+let tresdivzero = eval(BinOp(Num 3, Div, Num 0));;
+let seisdivdois = eval(BinOp(Num 6, Div, Num 2));;
+let seisdivquatro = eval(BinOp(Num 6, Div, Num 4));;
+
 let funcaoDobro = eval(Applic(Function("x", Int, BinOp(Var "x", Mult, Num 2)), Num 30))
 let funcaoMax = If(BinOp(Var "in1", Greater, Var "in2"), Var "in1", Var "in2")
 let variavel = Let(Var "x", 5, ...)
@@ -173,6 +179,13 @@ let testeLerRec = eval(LetRec("foo", Int, Int, Function("x", Int, (If ((BinOp(Va
 let testeListaHead = eval(Hd(ListConst(Num 99, ListConst(Num 1, ListConst(Num 2, ListConst(Num 3, Nil)))))) ;;
 let testeListaTale = eval(Tl(ListConst(Num 0, ListConst(Num 1, ListConst(Num 2, ListConst(Num 3, Num 4)))))) ;;
 
-let testeTry = eval(TryWith(Hd(Nil), TryWith(Tl(Nil), TryWith(Hd(ListConst(Bool true, Nil)), Nil))));;
+let testeTryResultaEmTrue = eval(TryWith(Hd(Nil),
+                            TryWith(Tl(Nil),
+                                TryWith(Hd(ListConst(Bool true, Nil)), Nil))));;
+let testeTryResultaEm9 = eval(TryWith (Hd(Nil),Num 9));;
 
+
+let testeIsEmptyFalse = eval(IsEmpty(ListConst(Num 1, ListConst(Num 2, ListConst(Num 3, Num 4)))));;
+
+let testeIsEmptyTrue = eval(IsEmpty(Nil));;
 *)
